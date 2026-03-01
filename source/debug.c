@@ -140,6 +140,8 @@ static const char* const debug_modded_joker_names[] = {
     [7] = "Captcha",         // ID 107 (Clanker mode)
     [8] = "DDoS",            // ID 108 (Clanker mode)
     [9] = "Trojan",          // ID 109 (Clanker mode)
+    [10] = "Cyclone",        // ID 110
+    [11] = "Joker Joker",    // ID 111
 
     /* [4] = "YourNext",  // ID xxx – add your next modded joker here */
 };

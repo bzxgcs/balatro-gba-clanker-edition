@@ -9,6 +9,7 @@
 #include "custom_joker_sheet_2.h"
 #include "custom_joker_sheet_3.h"
 #include "custom_joker_sheet_4.h"
+#include "custom_joker_sheet_5.h"
 
 #define MODDED_JOKER_START_ID 100
 #define NUM_JOKERS_PER_SPRITESHEET 2
@@ -19,7 +20,8 @@ static const unsigned int* modded_joker_tiles[] = {
     custom_joker_sheet_1Tiles,
     custom_joker_sheet_2Tiles,
     custom_joker_sheet_3Tiles,
-    custom_joker_sheet_4Tiles
+    custom_joker_sheet_4Tiles,
+    custom_joker_sheet_5Tiles
 };
 
 static const unsigned short* modded_joker_pals[] = { 
@@ -27,7 +29,8 @@ static const unsigned short* modded_joker_pals[] = {
     custom_joker_sheet_1Pal,
     custom_joker_sheet_2Pal,
     custom_joker_sheet_3Pal,
-    custom_joker_sheet_4Pal
+    custom_joker_sheet_4Pal,
+    custom_joker_sheet_5Pal
 };
 
 #define NUM_MODDED_SHEETS (sizeof(modded_joker_tiles) / sizeof(modded_joker_tiles[0]))

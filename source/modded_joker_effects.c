@@ -6,6 +6,7 @@
 #include "custom_joker_sheet_1.h"
 #include "custom_joker_sheet_2.h"
 #include "custom_joker_sheet_3.h"
+#include "custom_joker_sheet_4.h"
 
 // #include "custom_joker_sheet_x.h" // Add this when you make IDs 1xx & 1xx!
 
@@ -14,8 +15,11 @@ static JokerEffect shared_joker_effect = {0};
 
 // Tells the compiler to go find this variable inside game.c
 extern int overkill_payout;
+extern int get_current_ante(void);
+extern bool is_c_j_fusion_active(void);
 #define MODDED_JOKER_START_ID 100
 #define NUM_JOKERS_PER_SPRITESHEET 2
+static JokerEffect custom_joker_effect_out = {0};
 
 // --- 0. LOCAL EFFECT OBJECT ---
 // We use this local object so we don't conflict with the vanilla file's locked memory
@@ -168,6 +172,78 @@ static u32 trojan_joker_effect(Joker* joker,
     return JOKER_EFFECT_FLAG_NONE; // Passive: Handled at Score Compare
 }
 
+// C JOKER (Left Half - The Brawn)
+static u32 c_joker_effect(Joker* joker, Card* scored_card, enum JokerEvent joker_event, JokerEffect** joker_effect) {
+    // Always gives +100 Chips
+    if (joker_event == JOKER_EVENT_INDEPENDENT) {
+        custom_joker_effect_out.chips = 100; 
+        *joker_effect = &custom_joker_effect_out; // Pass our manual struct back to the engine
+        return JOKER_EFFECT_FLAG_CHIPS;
+    }
+    return JOKER_EFFECT_FLAG_NONE;
+}
+
+// J JOKER (Right Half - The Brains & Fusion Driver)
+static u32 j_joker_effect(Joker* joker, Card* scored_card, enum JokerEvent joker_event, JokerEffect** joker_effect) {
+    
+    // --- PHASE 1: SCORING (Build the stack & apply it) ---
+    if (joker_event == JOKER_EVENT_INDEPENDENT) {
+        
+        if (is_c_j_fusion_active()) {
+            
+            // If it's a Pair, juice up the multiplier BEFORE we score!
+            if (*get_hand_type() == PAIR) {
+                int current_ante = get_current_ante();
+                int max_cap = 10; // Default cap for Ante 1 to 3
+                
+                // Scale the cap based on Ante!
+                if (current_ante >= 4) {
+                    max_cap = 10 + ((current_ante - 3) * 2);
+                    if (max_cap > 20) max_cap = 20; // Hard cap at x20 for Ante 8+
+                }
+                
+                joker->persistent_state += 2; // Adds x2 per Pair
+                
+                if (joker->persistent_state > max_cap) {
+                    joker->persistent_state = max_cap;
+                }
+            }
+            
+            // Apply the base +10 Mult AND our stacked X-Mult
+            custom_joker_effect_out.mult = 10;
+            custom_joker_effect_out.xmult = joker->persistent_state; // Spelled exactly as the compiler requested!
+            *joker_effect = &custom_joker_effect_out;
+            
+            if (joker->persistent_state > 0) {
+                return JOKER_EFFECT_FLAG_MULT | JOKER_EFFECT_FLAG_XMULT;
+            }
+            return JOKER_EFFECT_FLAG_MULT;
+        } 
+        else {
+            // Not fused: Just give the base +10 Mult and clear any ghost xmult
+            custom_joker_effect_out.mult = 10;
+            custom_joker_effect_out.xmult = 0; 
+            *joker_effect = &custom_joker_effect_out;
+            return JOKER_EFFECT_FLAG_MULT;
+        }
+    }
+
+    // --- PHASE 2: DISCHARGE (Reset after the hand is completely done) ---
+    if (joker_event == JOKER_EVENT_ON_HAND_SCORED_END) {
+        
+        if (is_c_j_fusion_active()) {
+            // We just played a Straight/Full House/etc! 
+            // The massive multiplier was already cashed out in Phase 1.
+            // Reset the driver back to 0.
+            if (*get_hand_type() != PAIR) {
+                joker->persistent_state = 0; 
+            }
+        }
+    }
+    
+    return JOKER_EFFECT_FLAG_NONE;
+}
+
 // --- 2. YOUR MODDED REGISTRY ---
 
 // The engine knows to start reading this array at ID 100.
@@ -183,8 +259,10 @@ const JokerInfo modded_joker_registry[] = {
     { COMMON_JOKER,          6,      overkill_joker_effect         }, // Index 5 -> ID 105 (Overkill)
     { RARE_JOKER,            17,     jamming_joker_effect          }, // ID 106 (Jamming) Clanker
     { RARE_JOKER,            13,     captcha_joker_effect          }, // ID 107 (CaptchA) Clanker
-    { RARE_JOKER,            15,     ddos_joker_effect             }, // ID 108 (DDoS Attack)
-    { UNCOMMON_JOKER,        12,     trojan_joker_effect           }, // ID 109 (Trojan Joker)
+    { RARE_JOKER,            15,     ddos_joker_effect             }, // ID 108 (DDoS Attack) Clanker
+    { UNCOMMON_JOKER,        12,     trojan_joker_effect           }, // ID 109 (Trojan Joker) Clanker
+    { RARE_JOKER,            16,     c_joker_effect                }, // ID 110 (Cyclone Joker)
+    { RARE_JOKER,            16,     j_joker_effect                }, // ID 111 (Joker Joker)
 };
 
 

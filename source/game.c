@@ -3279,6 +3279,27 @@ static inline void select_highcard_cards_in_played_hand(void)
     card_object_set_selected(played[highest_rank_index], true);
 }
 
+// 1. Let the Jokers know what the current Ante is!
+int get_current_ante(void) {
+    return ante;
+}
+
+bool is_c_j_fusion_active(void) {
+    int c_idx = -1;
+    int j_idx = -1;
+
+    for (int i = 0; i < list_get_len(&_owned_jokers_list); i++) {
+        JokerObject* j_obj = list_get_at_idx(&_owned_jokers_list, i);
+        if (j_obj->joker->id == 110) c_idx = i; // Cyclone Joker ID
+        if (j_obj->joker->id == 111) j_idx = i; // Joker Joker ID
+    }
+
+    if (c_idx != -1 && j_idx != -1 && c_idx == j_idx - 1) {
+        return true;
+    }
+    return false;
+}
+
 // returns true if a joker was scored, false otherwise
 static bool check_and_score_joker_for_event(
     ListItr* starting_joker_itr,
