@@ -303,7 +303,7 @@ static bool game_playing_hand_row_on_selection_changed(
 
 static int game_playing_hand_row_get_size(void);
 
-static bool custom_jokers_enabled = false; // On and off for aditional cards
+static bool custom_jokers_enabled = true; // On and off for aditional cards
 
 static void shop_reroll_row_on_key_transit(SelectionGrid* selection_grid, Selection* selection);
 static bool shop_reroll_row_on_selection_changed(
@@ -446,6 +446,11 @@ static const BG_POINT CARD_DISCARD_PNT      = {240,     70};
 static const BG_POINT HAND_START_POS        = {120,     90};
 static const BG_POINT HAND_PLAY_POS         = {120,     70};
 static const BG_POINT MAIN_MENU_ACE_T       = {88,      26};
+
+//我的文件
+static bool is_money_enough(int money, int cost);
+static int count_joker_id(int joker_id);
+static int get_current_hand_size(void);
 // clang-format on
 
 static uint rng_seed = 0;
@@ -728,7 +733,7 @@ static inline void reset_shop_jokers(void)
         // Forcefully shut these off in Normal Mode every time the shop pool resets!
         if (!ai_mode_enabled) {
             // Just add new IDs to this array! The loop handles the rest.
-            int clanker_bans[] = { 106, 107, 108, 109 }; 
+            int clanker_bans[] = { 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 123 }; 
             int num_bans = sizeof(clanker_bans) / sizeof(clanker_bans[0]);
             
             for (int j = 0; j < num_bans; j++) {
@@ -2259,6 +2264,10 @@ static void game_playing_execute_discard(void)
             }
             joker_object_shake(joker_obj, SFX_CARD_DESELECT); // Visual feedback
         }
+        // Delayed satisfacation
+        if (joker_obj->joker->id == 115) {                   
+            joker_obj->joker->persistent_state = 1;        
+        }
     }
     // ---> END GREEN JOKER DISCARD HOOK <---
     display_discards(--discards);
@@ -2555,7 +2564,7 @@ static inline void game_playing_process_hand_select_input(void)
 
 static inline void card_draw(void)
 {
-    if (deck_top < 0 || hand_top >= hand_size - 1 || hand_top >= MAX_HAND_SIZE - 1)
+    if (deck_top < 0 || hand_top >= get_current_hand_size() - 1 || hand_top >= MAX_HAND_SIZE - 1)
         return;
 
     CardObject* card_object = card_object_new(deck_pop());
@@ -3556,7 +3565,7 @@ static inline bool play_scoring_held_cards_update(int played_idx)
             if (check_and_score_joker_for_event(
                     &_joker_scored_itr,
                     hand[scored_card_index],
-                    JOKER_EVENT_ON_CARD_HELD
+                    JOKER_EVENT_ON_CARD_HELD //是否应该区分手牌和打出的牌？目前没有任何Joker区分这两者，但未来可能会有，所以先传这个参数以防万一
                 ))
             {
                 card_object_shake(hand[scored_card_index], SFX_CARD_SELECT);
@@ -3753,7 +3762,7 @@ static inline void played_cards_update_loop(void)
 
 static inline int hand_get_max_size(void)
 {
-    return hand_size;
+    return get_current_hand_size();
 }
 
 static bool capacocha_is_active = false;
@@ -3870,7 +3879,7 @@ static inline void game_playing_process_input_and_state(void)
 
 static inline void game_playing_process_card_draw()
 {
-    if (hand_state == HAND_DRAW && cards_drawn < hand_size)
+    if (hand_state == HAND_DRAW && cards_drawn < get_current_hand_size())
     {
         if (timer % FRAMES(10) == 0) // Draw a card every 10 frames
         {
@@ -4060,8 +4069,9 @@ static inline void cards_in_hand_update_loop(void)
                         hand_selections = 0;
                         timer = TM_ZERO;
                         scored_card_index = played_top + 1;
-
+                        // TODO: 在这里加飞溅小丑
                         select_cards_in_played_hand();
+                        //select_all_five_cards_in_played_hand();
                     }
 
                     break;
@@ -4803,6 +4813,42 @@ static inline void joker_start_discard_animation(JokerObject* joker_object)
     list_push_back(&_discarded_jokers_list, joker_object);
 }
 
+static void copy_joker(void){    
+    
+    List* jokers_list = get_jokers_list();
+    int list_length = list_get_len(jokers_list);
+    if (list_length >= MAX_JOKERS_HELD_SIZE)
+        return;
+    
+    int copy_idx = random() % list_length;
+    JokerObject* object_to_copy = (JokerObject*)list_get_at_idx(&_owned_jokers_list, copy_idx);
+  
+    int joker_id = object_to_copy->joker->id;
+
+    Joker* joker = joker_new((u8)joker_id);
+    if (!joker)
+        return;
+    joker->persistent_state = object_to_copy->joker->persistent_state; 
+    joker->value = object_to_copy->joker->value;
+    joker->scoring_state = object_to_copy->joker->scoring_state;
+
+    JokerObject* joker_copied = joker_object_new(joker);
+    if (!joker_copied)
+    {
+        joker_destroy(&joker);
+        return;
+    }
+    /* Position off-screen; held_jokers_update_loop will animate it in */
+    joker_copied->sprite_object->x  = int2fx(108);
+    joker_copied->sprite_object->y  = int2fx(10);
+    joker_copied->sprite_object->tx = int2fx(108);
+    joker_copied->sprite_object->ty = int2fx(10);
+
+    /* Use the public list interface to add */
+    list_push_back(jokers_list, joker_copied);
+    return;
+}
+
 static inline void game_sell_joker(int joker_idx)
 {
     if (joker_idx < 0 || joker_idx >= list_get_len(&_owned_jokers_list))
@@ -4835,11 +4881,18 @@ static inline void game_sell_joker(int joker_idx)
         money += sell_value; // Only gain money if Voor Joker didn't eat it!
         display_money();
     }
+    int sell_id = joker_object->joker->id;
+    int sell_pers = joker_object->joker->persistent_state;
     // ---> END VOOR JOKER HOOK <---
 
     erase_price_under_sprite_object(joker_object->sprite_object);
     remove_owned_joker(joker_idx);
     joker_start_discard_animation(joker_object);
+    
+    if (sell_id == 117 && sell_pers<=0){
+        copy_joker();
+    }
+
 }
 
 static void jokers_sel_row_on_key_transit(SelectionGrid* selection_grid, Selection* selection)
@@ -4928,7 +4981,7 @@ static void shop_top_row_on_key_transit(SelectionGrid* selection_grid, Selection
         JokerObject* joker_object =
             (JokerObject*)list_get_at_idx(&_shop_jokers_list, shop_joker_idx);
         if (joker_object == NULL || list_get_len(&_owned_jokers_list) >= MAX_JOKERS_HELD_SIZE ||
-            money < joker_object->joker->value)
+            !is_money_enough(money, joker_object->joker->value))
         {
             return;
         }
@@ -5059,8 +5112,13 @@ static inline void game_shop_reroll(int* reroll_cost)
             joker_object_shake(joker_object, UNDEFINED);
         }
     }
-
-    (*reroll_cost)++;
+    if (*reroll_cost == 0){
+        *reroll_cost = REROLL_BASE_COST;
+    }
+    else{
+        (*reroll_cost)++;
+    }
+    
     tte_printf(
         "#{P:%d,%d; cx:0x%X000}$%d",
         SHOP_REROLL_RECT.left,
@@ -5070,6 +5128,27 @@ static inline void game_shop_reroll(int* reroll_cost)
     );
 }
 
+// 信用卡相关函数
+static bool is_money_enough(int money, int cost){
+    int base_cost = count_joker_id(116) ? cost - 20 : cost; // Flash Card gives a discount of 2
+    return money >= base_cost;
+}
+
+static int count_joker_id(int joker_id){
+    int count = 0;
+    for (int i = 0; i < list_get_len(&_owned_jokers_list); i++) {
+        JokerObject* joker_obj = (JokerObject*)list_get_at_idx(&_owned_jokers_list, i);
+        if (joker_obj->joker->id == joker_id) {
+            count++;
+        } 
+    }
+    return count;
+}
+
+static int get_current_hand_size(){
+    return hand_size - 2 * count_joker_id(123);
+}
+
 static void shop_reroll_row_on_key_transit(SelectionGrid* selection_grid, Selection* selection)
 {
     if (!key_hit(SELECT_CARD))
@@ -5077,13 +5156,24 @@ static void shop_reroll_row_on_key_transit(SelectionGrid* selection_grid, Select
         return;
     }
 
-    if (money >= reroll_cost)
+    if (is_money_enough(money, reroll_cost))
     {
         // TODO: Add money sound effect
         play_sfx(SFX_BUTTON, MM_BASE_PITCH_RATE, BUTTON_SFX_VOLUME);
         game_shop_reroll(&reroll_cost);
     }
 }
+
+static int get_first_reroll_cost(int* reroll_cost){
+    if (count_joker_id(122)) {
+        *reroll_cost = 0;
+    }
+    else {
+        *reroll_cost = REROLL_BASE_COST;
+    }
+    return *reroll_cost;
+}
+
 
 // Shop menu input and selection
 static void game_shop_process_user_input()
@@ -5100,7 +5190,7 @@ static void game_shop_process_user_input()
             SHOP_REROLL_RECT.left,
             SHOP_REROLL_RECT.top,
             TTE_WHITE_PB,
-            reroll_cost
+            get_first_reroll_cost(&reroll_cost)
         );
     }
 

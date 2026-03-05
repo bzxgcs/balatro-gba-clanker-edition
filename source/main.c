@@ -90,6 +90,7 @@ void init()
     blind_init();
     joker_init();
     game_init();
+    // NOT Start the game at the splash screen
     game_change_state(GAME_STATE_SPLASH_SCREEN);
 }
 

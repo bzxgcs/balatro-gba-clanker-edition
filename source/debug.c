@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "modded_joker_info.h"
 extern size_t get_modded_registry_size(void);
 
 /* ========================================================================
@@ -129,25 +130,11 @@ static const char* const joker_names[] = {
 
 /* Modded joker names, indexed by LOCAL modded index (0 = ID 100, 1 = ID 101, ...).
  * Add a new entry here whenever you add a joker to modded_joker_effects.c. */
-static const char* const debug_modded_joker_names[] = {
-    [0] = "Recursion",       // ID 100
-    [1] = "LastDance",       // ID 101
-    [2] = "Joker Voorhees",  // ID 102
-    [3] = "Jaker",           // ID 103
-    [4] = "Capacocha",       // ID 104
-    [5] = "Overkill",        // ID 105
-    [6] = "Jamming",         // ID 106 (Clanker mode)
-    [7] = "Captcha",         // ID 107 (Clanker mode)
-    [8] = "DDoS",            // ID 108 (Clanker mode)
-    [9] = "Trojan",          // ID 109 (Clanker mode)
-    [10] = "Cyclone",        // ID 110
-    [11] = "Joker Joker",    // ID 111
+extern const char* const debug_modded_joker_names[]; /* defined in modded_debug.c to avoid circular dependency */
 
-    /* [4] = "YourNext",  // ID xxx – add your next modded joker here */
-};
 
 #define NUM_NAMED_JOKERS      (int)(sizeof(joker_names) / sizeof(joker_names[0]))
-#define NUM_NAMED_MODDED      (int)(sizeof(debug_modded_joker_names) / sizeof(debug_modded_joker_names[0]))
+
 #define MODDED_JOKER_START_ID 100
 
 /* Returns the real in-game joker ID for a given picker display index.
@@ -216,9 +203,9 @@ static void debug_draw_picker(void)
         char line[30];
 
         if (name)
-            snprintf(line, sizeof(line), "%s%3d %-8s", (idx == picker_cursor) ? ">" : " ", joker_id, name);
+            snprintf(line, sizeof(line), "%s%3d %-8s", (idx == picker_cursor) ? "$" : " ", joker_id, name);
         else
-            snprintf(line, sizeof(line), "%sID#%d", (idx == picker_cursor) ? ">" : " ", joker_id);
+            snprintf(line, sizeof(line), "%sID#%d", (idx == picker_cursor) ? "$" : " ", joker_id);
 
         int pb = (idx == picker_cursor) ? TTE_RED_PB : TTE_WHITE_PB;
         bool owned = is_joker_owned(joker_id);

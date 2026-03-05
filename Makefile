@@ -144,7 +144,7 @@ $(BUILD): build/gbalatro_sys8.s
 build/%.s: $(FONT)/%.png
 	@echo Building font
 	@mkdir -p $(BUILD)
-	@python3 scripts/generate_font.py -i $< -o $@
+	@python scripts/generate_font.py -i $< -o $@
 
 #---------------------------------------------------------------------------------
 clean:

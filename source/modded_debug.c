@@ -1,0 +1,30 @@
+#include <string.h>
+
+const char* const debug_modded_joker_names[] = {
+    [0] = "Recursion",       // ID 100
+    [1] = "LastDance",       // ID 101
+    [2] = "Joker Voorhees",  // ID 102
+    [3] = "Jaker",           // ID 103
+    [4] = "Capacocha",       // ID 104
+    [5] = "Overkill",        // ID 105
+    [6] = "Jamming",         // ID 106 (Clanker mode)
+    [7] = "Captcha",         // ID 107 (Clanker mode)
+    [8] = "DDoS",            // ID 108 (Clanker mode)
+    [9] = "Trojan",          // ID 109 (Clanker mode)
+    [10] = "Cyclone",        // ID 110
+    [11] = "Joker Joker",    // ID 111
+    [12] = "Shoot the Moon", // ID 112
+    [13] = "Loyalty Card",   // ID 113
+    [14] = "Egg Joker",      // ID 114
+    [15] = "Delayed Grat",   // ID 115
+    [16] = "Credit Card",    // ID 116
+    [17] = "Invisible",      // ID 117
+    [18] = "Seeing Double",  // ID 118
+    [19] = "Ride the Bus",   // ID 119
+    [20] = "ToDo List",     // ID 120
+    [21] = "Gift Card",     // ID 121
+    [22] = "Chaos Joker",   // ID 122
+    [23] = "Stuntman",    // ID 123
+
+    /* [4] = "YourNext",  // ID xxx – add your next modded joker here */
+};
