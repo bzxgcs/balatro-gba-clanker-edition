@@ -2105,6 +2105,8 @@ static void game_round_on_init()
             discards += stolen_hands;
         }
     }
+    
+    // 匕首代码在此
 
     display_hands(hands);       
     display_discards(discards); 
@@ -3766,6 +3768,7 @@ static inline int hand_get_max_size(void)
 }
 
 static bool capacocha_is_active = false;
+static u32 end_timer;
 static inline void game_playing_process_input_and_state(void)
 {
     // ---> 1. CAPACOCHA HOSTAGE LOOP <---
@@ -3846,6 +3849,13 @@ static inline void game_playing_process_input_and_state(void)
     }
     else if (play_state == PLAY_ENDING) {
         if (mult > 0) {
+            /*
+            chips = (chips+mult) / 2;
+            mult = chips * 1;
+            display_mult(); display_chips();
+            */
+            end_timer = timer; 
+            // Store the timer value at the moment of scoring to sync the lerp
             temp_score = u32_protected_mult(chips, mult);
             lerped_temp_score = int2fx(temp_score);
             lerped_score = int2fx(score);
