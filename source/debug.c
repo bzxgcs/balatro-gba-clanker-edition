@@ -305,6 +305,24 @@ static void debug_process_picker_input(void)
         }
         picker_needs_redraw = true;
     }
+    if (keys_hit & KEY_RIGHT)
+    {
+        picker_cursor = (picker_cursor + 10) % total_jokers;
+        if (picker_cursor >= picker_scroll_top + PICKER_BODY_ROWS)
+            picker_scroll_top = picker_cursor - PICKER_BODY_ROWS + 1;
+        else if (picker_cursor < picker_scroll_top)
+            picker_scroll_top = picker_cursor;
+        picker_needs_redraw = true;
+    }
+    if (keys_hit & KEY_LEFT)
+    {
+        picker_cursor = (picker_cursor - 10 + total_jokers) % total_jokers;
+        if (picker_cursor < picker_scroll_top)
+            picker_scroll_top = picker_cursor;
+        else if (picker_cursor >= picker_scroll_top + PICKER_BODY_ROWS)
+            picker_scroll_top = picker_cursor - PICKER_BODY_ROWS + 1;
+        picker_needs_redraw = true;
+    }
 
     /* Page up/down with L/R */
     if (keys_hit & KEY_L)

@@ -155,6 +155,9 @@
 #define CARD_UNFOCUSED_SEL_Y 15
 #define CARD_FOCUSED_SEL_Y   20
 
+// personal patch
+#define CLAMP_CUSTOM(x, low, high) ((x) > (high) ? (high) : ((x) < (low) ? 0 : (x)))
+
 enum GameShopStates
 {
     GAME_SHOP_INTRO,
@@ -657,6 +660,7 @@ static bool discarded_card = false;
 // Keeping track of what Jokers are scored at each step
 static ListItr _joker_scored_itr;
 static ListItr _joker_card_scored_end_itr;
+static ListItr _joker_card_held_end_itr;
 static ListItr _joker_round_end_itr;
 
 static int selection_x = 0;
@@ -733,7 +737,7 @@ static inline void reset_shop_jokers(void)
         // Forcefully shut these off in Normal Mode every time the shop pool resets!
         if (!ai_mode_enabled) {
             // Just add new IDs to this array! The loop handles the rest.
-            int clanker_bans[] = { 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 123 }; 
+            int clanker_bans[] = { 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112}; 
             int num_bans = sizeof(clanker_bans) / sizeof(clanker_bans[0]);
             
             for (int j = 0; j < num_bans; j++) {
@@ -3451,6 +3455,7 @@ static inline bool play_scoring_cards_update(void)
         {
             // reuse these variables for held cards
             _joker_scored_itr = list_itr_create(&_owned_jokers_list);
+            _joker_card_held_end_itr = list_itr_create(&_owned_jokers_list);
             scored_card_index = hand_top;
 
             play_state = PLAY_SCORING_HELD_CARDS;
@@ -3557,32 +3562,68 @@ static inline bool play_scoring_card_jokers_update(void)
 // returns true if the scoring loop has returned early
 static inline bool play_scoring_held_cards_update(int played_idx)
 {
-    if (played_idx == 0 && (timer % FRAMES(30) == 0) && timer > FRAMES(40))
+    if (played_idx == 10086)
     {
-        tte_erase_rect_wrapper(HELD_CARDS_SCORES_RECT);
-
-        // Go through all held cards and see if they activate Jokers
-        for (; scored_card_index >= 0; scored_card_index--)
-        {
-            if (check_and_score_joker_for_event(
-                    &_joker_scored_itr,
-                    hand[scored_card_index],
-                    JOKER_EVENT_ON_CARD_HELD //是否应该区分手牌和打出的牌？目前没有任何Joker区分这两者，但未来可能会有，所以先传这个参数以防万一
-                ))
-            {
-                card_object_shake(hand[scored_card_index], SFX_CARD_SELECT);
-                return true;
-            }
-            _joker_scored_itr = list_itr_create(&_owned_jokers_list);
-        }
-
+        return false;
+    }
+    if (scored_card_index < 0)
+    {
         scored_card_index = 0;
         _joker_round_end_itr = list_itr_create(&_owned_jokers_list);
-        play_state = PLAY_SCORING_INDEPENDENT_JOKERS;
+        play_state = PLAY_SCORING_INDEPENDENT_JOKERS;/* code */
+        return false;
     }
+    if ((timer % FRAMES(30) == 0) && timer > FRAMES(40))
+    {
+        tte_erase_rect_wrapper(HELD_CARDS_SCORES_RECT);
+        if (check_and_score_joker_for_event(
+                    &_joker_scored_itr,
+                    hand[scored_card_index],
+                    JOKER_EVENT_ON_CARD_HELD 
+                ))
+        {
+            card_object_shake(hand[scored_card_index], SFX_CARD_SELECT);
+            return true;
+        }
+        
+        if (check_and_score_joker_for_event(
+                &_joker_card_held_end_itr,
+                hand[scored_card_index],
+                JOKER_EVENT_ON_CARD_HELD_END
+            ))
+        {
+            // If we just scored a retrigger, return early and go back to the
+            // previous state score the same card again without incrementing
+            // scored_card_index to score the current card again
+            if (retrigger)
+            {                
+                // card_object_shake(hand[scored_card_index], SFX_CARD_SELECT);
+                _joker_scored_itr = list_itr_create(&_owned_jokers_list);
+                _joker_card_held_end_itr = list_itr_create(&_owned_jokers_list);
+                retrigger = false;
+                CardObject* scored_card_object = hand[scored_card_index];
+                card_object_shake(scored_card_object, SFX_CHIPS_CARD);
+                play_state = PLAY_SCORING_HELD_CARDS;
+            }
+            
+            return true;
+            
+        }
 
+        
+    
+        // Go through all held cards and see if they activate Jokers
+        scored_card_index--;
+        _joker_scored_itr = list_itr_create(&_owned_jokers_list);
+        _joker_card_held_end_itr = list_itr_create(&_owned_jokers_list);
+        play_state = PLAY_SCORING_HELD_CARDS;
+
+        
+    }
     return false;
 }
+
+static JokerObject* current_joker;
 
 // Score Jokers normally (independent)
 // returns true if the scoring loop has returned early
@@ -3592,12 +3633,32 @@ static inline bool play_scoring_independent_jokers_update(int played_idx)
     {
 
         tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
-
+        /* raw code
         if (check_and_score_joker_for_event(&_joker_scored_itr, NULL, JOKER_EVENT_INDEPENDENT))
         {
             return true;
         }
-
+        */
+        
+        current_joker = list_itr_next(&_joker_scored_itr);
+ 
+        if (current_joker != NULL)
+        {
+            joker_object_score(current_joker, NULL, JOKER_EVENT_INDEPENDENT);
+            if (current_joker->joker->rarity==UNCOMMON_JOKER){
+                ListItr _check_itr = list_itr_create(&_owned_jokers_list);
+                JokerObject* bqjoker;
+                while ((bqjoker = list_itr_next(&_check_itr)))
+                {                    
+                    {
+                        joker_object_score(bqjoker, NULL, JOKER_EVENT_INDEPENDENT_END);
+                    }             
+                }
+            }
+            return true;
+        }
+  
+        
         scored_card_index =
             played_top + 1; // Reset the scored card index to the top of the played stack
 
@@ -3768,7 +3829,7 @@ static inline int hand_get_max_size(void)
 }
 
 static bool capacocha_is_active = false;
-static u32 end_timer;
+// static u32 end_timer;
 static inline void game_playing_process_input_and_state(void)
 {
     // ---> 1. CAPACOCHA HOSTAGE LOOP <---
@@ -3854,7 +3915,7 @@ static inline void game_playing_process_input_and_state(void)
             mult = chips * 1;
             display_mult(); display_chips();
             */
-            end_timer = timer; 
+            // end_timer = timer; 
             // Store the timer value at the moment of scoring to sync the lerp
             temp_score = u32_protected_mult(chips, mult);
             lerped_temp_score = int2fx(temp_score);
@@ -5348,6 +5409,60 @@ static void game_blind_select_on_update()
     int substate = state_info[game_state].substate;
     blind_select_state_actions[substate]();
 }
+static int get_random_common_joker_id(){
+    // Now determine how many jokers are available based on the rarity
+    int jokers_avail_size = get_num_shop_jokers_avail();
+    if (jokers_avail_size == 0)
+        return UNDEFINED;
+
+    int matching_joker_ids[jokers_avail_size];
+    int fallback_random_idx = random() % jokers_avail_size;
+    int fallback_random_joker_id = UNDEFINED;
+    int match_count = 0;
+
+    BitsetItr itr = bitset_itr_create(&_avail_jokers_bitset);
+
+    int i = 0;
+    int joker_id = UNDEFINED;
+    while ((joker_id = bitset_itr_next(&itr)) != UNDEFINED)
+    {
+        if (i++ == fallback_random_idx)
+            fallback_random_joker_id = joker_id;
+        const JokerInfo* info = get_joker_registry_entry(joker_id);
+        if (info->rarity == COMMON_JOKER)
+        {
+            matching_joker_ids[match_count++] = joker_id;
+        }
+    }
+    int selected_joker_id =
+        (match_count > 0) ? matching_joker_ids[random() % match_count] : fallback_random_joker_id;
+    return selected_joker_id;
+}
+
+
+
+static void add_common_joker(void){     
+
+    Joker* joker = joker_new((u8)get_random_common_joker_id());
+    if (!joker)
+        return;
+
+    JokerObject* joker_added = joker_object_new(joker);
+    if (!joker_added)
+    {
+        joker_destroy(&joker);
+        return;
+    }
+    /* Position off-screen; held_jokers_update_loop will animate it in */
+    joker_added->sprite_object->x  = int2fx(108);
+    joker_added->sprite_object->y  = int2fx(10);
+    joker_added->sprite_object->tx = int2fx(108);
+    joker_added->sprite_object->ty = int2fx(10);
+    /* Use the public list interface to add */
+    list_push_back(get_jokers_list(), joker_added);
+    return;
+}
+
 
 static inline void game_blind_select_erase_blind_reqs_and_rewards()
 {
@@ -5369,6 +5484,19 @@ static inline void game_blind_select_erase_blind_reqs_and_rewards()
 
         tte_erase_rect_wrapper(blind_req_and_reward_rect);
     }
+    // Riff Raff patch
+    ListItr itr = list_itr_create(get_jokers_list());
+    JokerObject* joker_object;
+    while ((joker_object = list_itr_next(&itr))){
+        if (joker_object->joker->id == 127){
+            int joker_can_add = CLAMP_CUSTOM(5 - list_get_len(get_jokers_list()), 1, 2);
+            for (int i = 0; i < joker_can_add; i++){
+                joker_object_shake(joker_object, UNDEFINED);
+                add_common_joker();
+            }
+        }
+    }
+
 }
 
 static Rect game_blind_select_get_req_score_rect(enum BlindType blind)

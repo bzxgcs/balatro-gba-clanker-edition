@@ -13,8 +13,8 @@ const char* const debug_modded_joker_names[] = {
     [9] = "Trojan",          // ID 109 (Clanker mode)
     [10] = "Cyclone",        // ID 110
     [11] = "Joker Joker",    // ID 111
-    [12] = "Shoot the Moon", // ID 112
-    [13] = "Loyalty Card",   // ID 113
+    [12] = "Test Joker",      // ID 112
+    [13] = "Baron",           // ID 113 
     [14] = "Egg Joker",      // ID 114
     [15] = "Delayed Grat",   // ID 115
     [16] = "Credit Card",    // ID 116
@@ -25,6 +25,9 @@ const char* const debug_modded_joker_names[] = {
     [21] = "Gift Card",     // ID 121
     [22] = "Chaos Joker",   // ID 122
     [23] = "Stuntman",    // ID 123
-
+    [24] = "Shoot the Moon", // ID 124
+    [25] = "Loyalty Card",   // ID 125
+    [26] = "Baseball Joker", // ID 126
+    [27] = "Riff Raff Joker", // ID 127
     /* [4] = "YourNext",  // ID xxx – add your next modded joker here */
 };
