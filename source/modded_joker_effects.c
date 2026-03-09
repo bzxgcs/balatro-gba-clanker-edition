@@ -701,7 +701,7 @@ const JokerInfo modded_joker_registry[] = {
     { COMMON_JOKER,          5,      shoot_moon_joker_effect       }, // ID 124 (Shoot the Moon)
     { UNCOMMON_JOKER,        5,      loyalty_card_joker_effect     }, // ID 125 (Loyalty Card)
     { RARE_JOKER,            8,      baseball_joker_effect         }, // ID 126 (Baseball Joker)
-    { COMMON_JOKER,          6,      riff_raff_joker_effect        }, // ID 127 (Riff Raff Joker)
+    { COMMON_JOKER,          7,      riff_raff_joker_effect        }, // ID 127 (Riff Raff Joker)
 
 };
 

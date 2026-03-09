@@ -144,7 +144,11 @@ $(BUILD): build/gbalatro_sys8.s
 build/%.s: $(FONT)/%.png
 	@echo Building font
 	@mkdir -p $(BUILD)
+ifeq ($(OS),Windows_NT)
 	@python scripts/generate_font.py -i $< -o $@
+else
+	@python3 scripts/generate_font.py -i $< -o $@
+endif
 
 #---------------------------------------------------------------------------------
 clean:
