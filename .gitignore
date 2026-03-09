@@ -5,6 +5,7 @@
 _codeql_detected_source_root
 *.sln
 *.vcxproj*
+* text eol=lf
 /balatro-gba/x64/**
 /tests/bitset/build
 /tests/list/build
