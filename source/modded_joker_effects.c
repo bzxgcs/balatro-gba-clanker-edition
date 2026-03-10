@@ -718,7 +718,7 @@ static u32 ceremonial_dagger_joker_effect(
         
         JokerObject* next_joker_obj = list_get_at_idx(get_jokers_list(), owned_joker_idx + 1);
         joker->persistent_state += next_joker_obj->joker->value;
-        /* If the function "remove_owned_joker" is called, these codes can be executed.
+        /* If the function "remove_owned_joker" is called, these codes can be accessed.
         if (next_joker_obj->joker->id == FOUR_FINGERS_JOKER_ID)
         {
             four_fingers_joker_count--;
