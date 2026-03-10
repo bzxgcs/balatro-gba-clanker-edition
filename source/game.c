@@ -155,8 +155,7 @@
 #define CARD_UNFOCUSED_SEL_Y 15
 #define CARD_FOCUSED_SEL_Y   20
 
-// personal patch
-#define CLAMP_CUSTOM(x, low, high) ((x) > (high) ? (high) : ((x) < (low) ? 0 : (x)))
+
 
 enum GameShopStates
 {
@@ -597,7 +596,7 @@ static Sprite* round_end_blind_token = NULL;
 static Sprite* blind_select_tokens[BLIND_TYPE_MAX] = {NULL};
 
 static int current_blind = BLIND_TYPE_SMALL;
-
+int get_current_blind(void) { return current_blind; }
 // The current state of the blinds, this is used to determine what the game is doing at any given
 // time
 static enum BlindState blinds_states[BLIND_TYPE_MAX] = {
@@ -692,6 +691,16 @@ static int discard_top = -1;
 static int shortcut_joker_count = 0;
 
 static int four_fingers_joker_count = 0;
+
+static int current_jidbs = 0;
+GBAL_UNUSED
+void offset_current_joker_index(int offset) { 
+    current_jidbs += offset; 
+}
+GBAL_UNUSED
+int get_current_joker_index(void) { 
+    return current_jidbs; 
+}
 
 GBAL_UNUSED
 static inline bool is_shop_joker_avail(int joker_id)
@@ -5440,8 +5449,8 @@ static int get_random_common_joker_id(){
 }
 
 
-
-static void add_common_joker(void){     
+GBAL_UNUSED
+void add_common_joker(void){     
 
     Joker* joker = joker_new((u8)get_random_common_joker_id());
     if (!joker)
@@ -5484,18 +5493,8 @@ static inline void game_blind_select_erase_blind_reqs_and_rewards()
 
         tte_erase_rect_wrapper(blind_req_and_reward_rect);
     }
-    // Riff Raff patch
-    ListItr itr = list_itr_create(get_jokers_list());
-    JokerObject* joker_object;
-    while ((joker_object = list_itr_next(&itr))){
-        if (joker_object->joker->id == 127){
-            int joker_can_add = CLAMP_CUSTOM(5 - list_get_len(get_jokers_list()), 1, 2);
-            for (int i = 0; i < joker_can_add; i++){
-                joker_object_shake(joker_object, UNDEFINED);
-                add_common_joker();
-            }
-        }
-    }
+
+
 
 }
 
@@ -5615,6 +5614,14 @@ static void game_blind_select_handle_input()
 
         if (selection_y == 0) // Blind selected
         {
+            for (current_jidbs=0; current_jidbs<list_get_len(get_jokers_list());
+                current_jidbs++){
+                JokerObject* joker_object = (JokerObject*)list_get_at_idx(get_jokers_list(), current_jidbs);
+                if (joker_get_score_effect(joker_object->joker,NULL,JOKER_EVENT_ON_BLIND_SELECTED,NULL)){
+                    joker_object_shake(joker_object, UNDEFINED);
+                }
+            }
+            
             play_sfx(SFX_BUTTON, MM_BASE_PITCH_RATE, BUTTON_SFX_VOLUME);
             state_info[game_state].substate = BLIND_SELECTED_ANIM_SEQ;
             timer = TM_ZERO;

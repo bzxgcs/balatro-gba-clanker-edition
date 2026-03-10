@@ -19,6 +19,7 @@
 #include "custom_joker_sheet_11.h"
 #include "custom_joker_sheet_12.h"
 #include "custom_joker_sheet_13.h"
+#include "custom_joker_sheet_14.h"
 // #include "custom_joker_sheet_x.h" // Add this when you make IDs 1xx & 1xx!
 
 // Creates a local shared memory struct specifically for your modded cards to use
@@ -26,10 +27,14 @@ static JokerEffect shared_joker_effect = {0};
 
 // Tells the compiler to go find this variable inside game.c
 extern int overkill_payout;
+extern int get_current_blind(void);
+extern int get_current_joker_index(void);
 extern int get_current_ante(void);
+extern void add_common_joker(void);
 extern bool is_c_j_fusion_active(void);
 #define MODDED_JOKER_START_ID 100
 #define NUM_JOKERS_PER_SPRITESHEET 2
+#define CLAMP_CUSTOM(x, low, high) ((x) > (high) ? (high) : ((x) < (low) ? 0 : (x)))
 static JokerEffect custom_joker_effect_out = {0};
 
 // --- 0. LOCAL EFFECT OBJECT ---
@@ -663,7 +668,79 @@ static u32 riff_raff_joker_effect(
 )
 {
     u32 effect_flags_ret = JOKER_EFFECT_FLAG_NONE;
-   
+    if (joker_event == JOKER_EVENT_ON_BLIND_SELECTED) {    
+        int joker_can_add = CLAMP_CUSTOM(5 - list_get_len(get_jokers_list()), 1, 2);
+        for (int i = 0; i < joker_can_add; i++){            
+                add_common_joker();
+        }
+    }
+    return effect_flags_ret;  
+}
+static u32 rocket_joker_effect(
+    Joker* joker, 
+    Card* scored_card, 
+    enum JokerEvent joker_event, 
+    JokerEffect** joker_effect
+)
+{
+    u32 effect_flags_ret = JOKER_EFFECT_FLAG_NONE;
+    if (joker_event == JOKER_EVENT_ON_JOKER_CREATED) {
+        joker->persistent_state = 1;   
+    }
+
+    if (joker_event == JOKER_EVENT_ON_ROUND_END) {
+        *joker_effect = &shared_joker_effect;
+        if (get_current_blind()==2)
+        {
+            joker->persistent_state += 2;
+        }     
+        (*joker_effect)-> money = joker->persistent_state;
+        effect_flags_ret = JOKER_EFFECT_FLAG_MONEY;
+    }
+    return effect_flags_ret;  
+}
+
+static u32 ceremonial_dagger_joker_effect(
+    Joker* joker, 
+    Card* scored_card, 
+    enum JokerEvent joker_event, 
+    JokerEffect** joker_effect
+)
+{
+    u32 effect_flags_ret = JOKER_EFFECT_FLAG_NONE;
+    int owned_joker_idx = get_current_joker_index();
+    if (joker_event == JOKER_EVENT_ON_JOKER_CREATED) {
+        joker->persistent_state = 0;   
+    }
+    if (joker_event == JOKER_EVENT_ON_BLIND_SELECTED &&
+    owned_joker_idx < list_get_len(get_jokers_list()) - 1) // Only trigger if we aren't the last Joker in the list (to avoid out of bounds)
+    {
+        
+        JokerObject* next_joker_obj = list_get_at_idx(get_jokers_list(), owned_joker_idx + 1);
+        joker->persistent_state += next_joker_obj->joker->value;
+        /* If the function "remove_owned_joker" is called, these codes can be executed.
+        if (next_joker_obj->joker->id == FOUR_FINGERS_JOKER_ID)
+        {
+            four_fingers_joker_count--;
+        }
+
+        if (next_joker_obj->joker->id == SHORTCUT_JOKER_ID)
+        {
+            shortcut_joker_count--;
+        }
+        bitset_set_idx(&_avail_jokers_bitset, joker_id, true);
+        */
+         
+        list_remove_at_idx(get_jokers_list(), owned_joker_idx+1);
+        list_push_back(get_expired_jokers_list(), next_joker_obj); 
+        // For madness, if the previous clown is eaten, use offset_current_joker_idx by -1.
+    }
+    if (joker_event==JOKER_EVENT_INDEPENDENT && joker->persistent_state > 0)
+    {
+        *joker_effect = &shared_joker_effect;
+        (*joker_effect)->mult = joker->persistent_state;
+        effect_flags_ret = JOKER_EFFECT_FLAG_MULT;  
+    }
     return effect_flags_ret;  
 }
 
@@ -674,35 +751,36 @@ static u32 riff_raff_joker_effect(
 // Because we set NUM_JOKERS_PER_SPRITESHEET to 2, 
 // Mobius reads the Left half, Last Dance reads the Right half!
 const JokerInfo modded_joker_registry[] = {
-    { UNCOMMON_JOKER,        7,      mobius_joker_effect           }, // Index 0 -> ID 100 (Mobius)
-    { RARE_JOKER,            20,     last_dance_joker_effect       }, // Index 1 -> ID 101 (Last Dance)
-    { COMMON_JOKER,          7,      voor_joker_effect             }, // Index 2 -> ID 102 (Voor)
-    { UNCOMMON_JOKER,        10,     jaker_joker_effect            }, // Index 3 -> ID 103 (Jaker)
-    { RARE_JOKER,            18,     capacocha_joker_effect        }, // Index 4 -> ID 104 (Capacocha)
-    { COMMON_JOKER,          6,      overkill_joker_effect         }, // Index 5 -> ID 105 (Overkill)
-    { RARE_JOKER,            17,     jamming_joker_effect          }, // ID 106 (Jamming) Clanker
-    { RARE_JOKER,            13,     captcha_joker_effect          }, // ID 107 (CaptchA) Clanker
-    { RARE_JOKER,            15,     ddos_joker_effect             }, // ID 108 (DDoS Attack) Clanker
-    { UNCOMMON_JOKER,        12,     trojan_joker_effect           }, // ID 109 (Trojan Joker) Clanker
-    { RARE_JOKER,            16,     c_joker_effect                }, // ID 110 (Cyclone Joker)
-    { RARE_JOKER,            16,     j_joker_effect                }, // ID 111 (Joker Joker)
-    { COMMON_JOKER,          5,      test_joker_effect             }, // ID 112 (test Joker, used for testing various flags and conditions, feel free to change the logic as you see fit!)
-    { RARE_JOKER,            8,      baron_joker_effect            }, // ID 113 (Baron)
-    { COMMON_JOKER,          4,      egg_joker_effect              }, // ID 114 (Egg Joker)
-    { COMMON_JOKER,          4,      delayed_gratification_joker_effect }, // ID 115 (Delayed Gratification)
-    { COMMON_JOKER,          5,      credit_card_joker_effect      }, // ID 116 (Credit Card)
-    { RARE_JOKER,            10,     invisible_joker_effect        }, // ID 117 (Invisible Joker)
-    { UNCOMMON_JOKER,        6,      seeing_double_joker_effect    }, // ID 118 (Seeing Double)
-    { COMMON_JOKER,          6,      ride_bus_joker_effect         }, // ID 119 (Ride the Bus)
-    { COMMON_JOKER,          5,      todo_list_joker_effect        }, // ID 120 (To-Do List)
-    { UNCOMMON_JOKER,        6,      gift_card_joker_effect        }, // ID 121 (Gift Card)
-    { COMMON_JOKER,          4,      chaos_joker_effect            }, // ID 122 (Chaos Joker)
-    { RARE_JOKER,            7,      stuntman_joker_effect         }, // ID 123 (Stuntman Joker)
-    { COMMON_JOKER,          5,      shoot_moon_joker_effect       }, // ID 124 (Shoot the Moon)
-    { UNCOMMON_JOKER,        5,      loyalty_card_joker_effect     }, // ID 125 (Loyalty Card)
-    { RARE_JOKER,            8,      baseball_joker_effect         }, // ID 126 (Baseball Joker)
-    { COMMON_JOKER,          6,      riff_raff_joker_effect        }, // ID 127 (Riff Raff Joker)
-
+    { UNCOMMON_JOKER,        7,      mobius_joker_effect               }, // Index 0 -> ID 100 (Mobius)
+    { RARE_JOKER,            20,     last_dance_joker_effect           }, // Index 1 -> ID 101 (Last Dance)
+    { COMMON_JOKER,          7,      voor_joker_effect                 }, // Index 2 -> ID 102 (Voor)
+    { UNCOMMON_JOKER,        10,     jaker_joker_effect                }, // Index 3 -> ID 103 (Jaker)
+    { RARE_JOKER,            18,     capacocha_joker_effect            }, // Index 4 -> ID 104 (Capacocha)
+    { COMMON_JOKER,          6,      overkill_joker_effect             }, // Index 5 -> ID 105 (Overkill)
+    { RARE_JOKER,            17,     jamming_joker_effect              }, // ID 106 (Jamming) Clanker
+    { RARE_JOKER,            13,     captcha_joker_effect              }, // ID 107 (CaptchA) Clanker
+    { RARE_JOKER,            15,     ddos_joker_effect                 }, // ID 108 (DDoS Attack) Clanker
+    { UNCOMMON_JOKER,        12,     trojan_joker_effect               }, // ID 109 (Trojan Joker) Clanker
+    { RARE_JOKER,            16,     c_joker_effect                    }, // ID 110 (Cyclone Joker)
+    { RARE_JOKER,            16,     j_joker_effect                    }, // ID 111 (Joker Joker)
+    { COMMON_JOKER,          5,      test_joker_effect                 }, // ID 112 (test Joker, used for testing various flags and conditions, feel free to change the logic as you see fit!)
+    { RARE_JOKER,            8,      baron_joker_effect                }, // ID 113 (Baron)
+    { COMMON_JOKER,          4,      egg_joker_effect                  }, // ID 114 (Egg Joker)
+    { COMMON_JOKER,          4,      delayed_gratification_joker_effect}, // ID 115 (Delayed Gratification)
+    { COMMON_JOKER,          5,      credit_card_joker_effect          }, // ID 116 (Credit Card)
+    { RARE_JOKER,            10,     invisible_joker_effect            }, // ID 117 (Invisible Joker)
+    { UNCOMMON_JOKER,        6,      seeing_double_joker_effect        }, // ID 118 (Seeing Double)
+    { COMMON_JOKER,          6,      ride_bus_joker_effect             }, // ID 119 (Ride the Bus)
+    { COMMON_JOKER,          5,      todo_list_joker_effect            }, // ID 120 (To-Do List)
+    { UNCOMMON_JOKER,        6,      gift_card_joker_effect            }, // ID 121 (Gift Card)
+    { COMMON_JOKER,          4,      chaos_joker_effect                }, // ID 122 (Chaos Joker)
+    { RARE_JOKER,            7,      stuntman_joker_effect             }, // ID 123 (Stuntman Joker)
+    { COMMON_JOKER,          5,      shoot_moon_joker_effect           }, // ID 124 (Shoot the Moon)
+    { UNCOMMON_JOKER,        5,      loyalty_card_joker_effect         }, // ID 125 (Loyalty Card)
+    { RARE_JOKER,            8,      baseball_joker_effect             }, // ID 126 (Baseball Joker)
+    { COMMON_JOKER,          6,      riff_raff_joker_effect            }, // ID 127 (Riff Raff Joker)
+    { UNCOMMON_JOKER,        5,      rocket_joker_effect               }, // ID 128 (Rocket Joker)
+    { COMMON_JOKER,          8,      ceremonial_dagger_joker_effect    }, // ID 129 (Ceremonial Dagger)
 };
 
 

@@ -29,5 +29,7 @@ const char* const debug_modded_joker_names[] = {
     [25] = "Loyalty Card",   // ID 125
     [26] = "Baseball Joker", // ID 126
     [27] = "Riff Raff Joker", // ID 127
+    [28] = "Rocket",  // ID xxx – add your next modded joker here
+    [29] = "Dagger"  // ID xxx – add your next modded joker here
     /* [4] = "YourNext",  // ID xxx – add your next modded joker here */
 };

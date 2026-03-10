@@ -17,11 +17,16 @@
 #include "custom_joker_sheet_10.h"
 #include "custom_joker_sheet_11.h"
 #include "custom_joker_sheet_12.h"
-#include "custom_joker_sheet_13.h" // Add this when you make IDs 1xx & 1xx!
+#include "custom_joker_sheet_13.h"
+#include "custom_joker_sheet_14.h"
 // Add this when you make IDs 1xx & 1xx!
 
 #define MODDED_JOKER_START_ID 100
 #define NUM_JOKERS_PER_SPRITESHEET 2
+
+#define PALETTE_SIZE 16
+
+// static unsigned short reversed_pals[14][PALETTE_SIZE];
 
 // 2. Put your sheets into the arrays
 static const unsigned int* modded_joker_tiles[] = { 
@@ -38,7 +43,8 @@ static const unsigned int* modded_joker_tiles[] = {
     custom_joker_sheet_10Tiles,
     custom_joker_sheet_11Tiles,
     custom_joker_sheet_12Tiles, // Add this when you make IDs 1xx & 1xx!
-    custom_joker_sheet_13Tiles  // Add this when you make IDs 1xx & 1xx!
+    custom_joker_sheet_13Tiles,  // Add this when you make IDs 1xx & 1xx!
+    custom_joker_sheet_14Tiles   // Add this when you make IDs 1xx & 1xx!
 };
 
 static const unsigned short* modded_joker_pals[] = { 
@@ -55,7 +61,8 @@ static const unsigned short* modded_joker_pals[] = {
     custom_joker_sheet_10Pal,
     custom_joker_sheet_11Pal,
     custom_joker_sheet_12Pal, // Add this when you make IDs 1xx & 1xx!
-    custom_joker_sheet_13Pal  // Add this when you make IDs 1xx & 1xx!
+    custom_joker_sheet_13Pal,  // Add this when you make IDs 1xx & 1xx!
+    custom_joker_sheet_14Pal   // Add this when you make IDs 1xx & 1xx!
 };
 
 #define NUM_MODDED_SHEETS (sizeof(modded_joker_tiles) / sizeof(modded_joker_tiles[0]))
@@ -80,6 +87,20 @@ bool get_modded_joker_gfx(int joker_id,
         // Pass back the whole sheet!
         *out_tiles = modded_joker_tiles[sheet_idx];
         *out_pal = modded_joker_pals[sheet_idx];
+        /*
+        // Reverse the palette colors
+        const unsigned short* original_pal = modded_joker_pals[sheet_idx];
+        for(int i = 0; i < PALETTE_SIZE; i++) {
+            unsigned short color = original_pal[i];
+            int r = (color >> 10) & 31;
+            int g = (color >> 5) & 31;
+            int b = color & 31;
+            r = 31 - r;
+            g = 31 - g;
+            b = 31 - b;
+            reversed_pals[sheet_idx][i] = (b << 10) | (g << 5) | r;
+        }
+        *out_pal = reversed_pals[sheet_idx];*/
         return true; 
     }
     
